@@ -75,10 +75,12 @@ public class ActivityDetectionIntentService extends IntentService {
                 return "on bike";
             case DetectedActivity.ON_FOOT:
                 return "on foot";
-            case DetectedActivity.TILTING:
-                return "tilting";
+            case DetectedActivity.WALKING:
+                return "walking";
             case DetectedActivity.STILL:
                 return "still";
+            case DetectedActivity.TILTING:
+                return "tilting";
             default:
                 return "unknown";
         }

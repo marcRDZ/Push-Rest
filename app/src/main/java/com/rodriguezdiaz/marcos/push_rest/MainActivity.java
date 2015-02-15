@@ -1,22 +1,34 @@
 package com.rodriguezdiaz.marcos.push_rest;
 
 import android.app.PendingIntent;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
 import android.support.v7.app.ActionBarActivity;
+import android.telephony.TelephonyManager;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
+import android.widget.ListView;
+import android.widget.SimpleAdapter;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.ActivityRecognition;
+import com.google.api.client.extensions.android.http.AndroidHttp;
+import com.google.api.client.extensions.android.json.AndroidJsonFactory;
+import com.rodriguezdiaz.marcos.restwebservice.registration.Registration;
+import com.rodriguezdiaz.marcos.restwebservice.registration.model.CollectionResponseRegistrationRecord;
+import com.rodriguezdiaz.marcos.restwebservice.registration.model.RegistrationRecord;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 
 public class MainActivity extends ActionBarActivity implements  GoogleApiClient.ConnectionCallbacks,
@@ -24,9 +36,8 @@ public class MainActivity extends ActionBarActivity implements  GoogleApiClient.
 
     private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
     private static final String TAG = "MainActivity";
-
+    private static Registration regService = null;
     private GoogleApiClient gac;
-
     Context context;
 
     @Override
@@ -37,11 +48,11 @@ public class MainActivity extends ActionBarActivity implements  GoogleApiClient.
         // Check device for Play Services APK. If check succeeds, proceed with
         //  GCM registration.
         if (checkPlayServices()) {
-            if (savedInstanceState == null) {
-                getSupportFragmentManager().beginTransaction()
+            /*if (savedInstanceState == null) {
+                getFragmentManager().beginTransaction()
                         .add(R.id.container, new PlaceholderFragment())
                         .commit();
-            }
+            }*/
             context = getApplicationContext();
             gac = new GoogleApiClient.Builder(context)
                     .addApi(ActivityRecognition.API)
@@ -56,11 +67,17 @@ public class MainActivity extends ActionBarActivity implements  GoogleApiClient.
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        new ListRegistrationAsyncTask(this).execute();
+    }
+
+    @Override
     public void onConnected(Bundle bundle) {
 
         Intent intent = new Intent(this, ActivityDetectionIntentService.class);
         PendingIntent pendingIntent = PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
-        ActivityRecognition.ActivityRecognitionApi.requestActivityUpdates(gac, 0, pendingIntent);
+        ActivityRecognition.ActivityRecognitionApi.requestActivityUpdates(gac, 3000, pendingIntent);
     }
 
     @Override
@@ -115,114 +132,73 @@ public class MainActivity extends ActionBarActivity implements  GoogleApiClient.
         }
         return true;
     }
- /*   private class GcmRegistrationAsyncTask extends AsyncTask<String, Void, String> {
-        private GoogleCloudMessaging gcm;
-        private Context context;
+    private class ListRegistrationAsyncTask extends AsyncTask<Void, Void, CollectionResponseRegistrationRecord> {
 
-        public GcmRegistrationAsyncTask(Context context) {
+        private String idPhone;
+        private Context context;
+        private CollectionResponseRegistrationRecord acts;
+        private ProgressDialog pd;
+
+        private ArrayList<Map<String,String>> list = null;
+        private SimpleAdapter adapter = null;
+        private String[] from = { "moment", "act" };
+        private int[] to = { android.R.id.text1, android.R.id.text2 };
+
+
+        public ListRegistrationAsyncTask(Context context) {
             this.context = context;
+            TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+            idPhone = telephonyManager.getDeviceId();
+
+        }
+
+        protected void onPreExecute(){
+            super.onPreExecute();
+            pd = new ProgressDialog(context);
+            pd.setMessage("Retrieving activities...");
+            pd.show();
         }
 
         @Override
-        protected String doInBackground(String... params) {
+        protected CollectionResponseRegistrationRecord doInBackground(Void... unused) {
+
             if (regService == null) {
                 Registration.Builder builder = new Registration.Builder(AndroidHttp.newCompatibleTransport(),
                         new AndroidJsonFactory(), null)
-                        // Need setRootUrl and setGoogleClientRequestInitializer only for local testing,
-                        // otherwise they can be skipped
                         .setRootUrl("https://fifth-moment-846.appspot.com/_ah/api/");
 
                 regService = builder.build();
+
             }
-            String msg = "";
             try {
-                if (gcm == null) {
-                    gcm = GoogleCloudMessaging.getInstance(context);
-                }
-                //Check if regId is stored in SharedPreferences
-                String regId = getRegistrationId(context);
-                if(regId.isEmpty()){
-
-                    regId = gcm.register(SENDER_ID);
-                    msg = "Device registered, registration ID=" + regId;
-                    //Now the app gets the Vendor Device Id
-                    TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
-                    String idPhone = telephonyManager.getDeviceId();
-                    //Here the app register this device and its registrationId from GCM to RegistrationEndpoint
-                    regService.register(regId, idPhone).execute();
-                    storeRegistrationDeviceId(context, regId);
-
-                }//Here the app send the DetectedActivity to RegistrationEndpoint
-                else {
-                    regService.record(regId, params[0], params[1]);
-                }
-
-            } catch (IOException ex) {
-                ex.printStackTrace();
-                msg = "Error: " + ex.getMessage();
+                acts = regService.listActivities(idPhone).execute();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-            return msg;
+            return acts;
         }
 
         @Override
-        protected void onPostExecute(String msg) {
-            if(!msg.isEmpty()) {
-                Toast.makeText(context, msg, Toast.LENGTH_LONG).show();
-                Logger.getLogger("REGISTRATION").log(Level.INFO, msg);
+        protected void onPostExecute(CollectionResponseRegistrationRecord acts) {
+            pd.dismiss();
+            // Do something with the result.
+            list = new ArrayList<>();
+            List<RegistrationRecord> actList = acts.getItems();
+            for (RegistrationRecord record : actList) {
+                HashMap<String, String> item = new HashMap<>();
+                item.put("moment", record.getMoment());
+                item.put("act", record.getTypeAct());
+                list.add(item);
             }
+            ListView listView = (ListView) findViewById(R.id.list);
+            adapter = new SimpleAdapter(MainActivity.this, list,android.R.layout.simple_list_item_2, from, to);
+            listView.setAdapter(adapter);
         }
     }
- private String registerDetectedActivity(Context context, String time, String act) {
-
-
-     if (regService == null)
-
-     {
-         Registration.Builder builder = new Registration.Builder(AndroidHttp.newCompatibleTransport(),
-                 new AndroidJsonFactory(), null)
-                 // Need setRootUrl and setGoogleClientRequestInitializer only for local testing,
-                 // otherwise they can be skipped
-                 .setRootUrl("https://fifth-moment-846.appspot.com/_ah/api/");
-
-         regService = builder.build();
-     }
-
-     String msg = "";
-     try
-
-     {
-         if (gcm == null) {
-             gcm = GoogleCloudMessaging.getInstance(context);
-         }
-         //Check if regId is stored in SharedPreferences
-         String regId = getRegistrationId(context);
-         if (regId.isEmpty()) {
-
-             regId = gcm.register(SENDER_ID);
-             msg = "Device registered, registration ID=" + regId;
-             //Now the app gets the Vendor Device Id
-             TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
-             String idPhone = telephonyManager.getDeviceId();
-             //Here the app register this device and its registrationId from GCM to RegistrationEndpoint
-             regService.register(regId, idPhone).execute();
-             storeRegistrationDeviceId(context, regId);
-
-         }//Here the app send the DetectedActivity to RegistrationEndpoint
-
-         regService.record(regId, time, act);
-
-
-     } catch (IOException ex) {
-         ex.printStackTrace();
-         msg = "Error: " + ex.getMessage();
-     }
-     return msg;
- }*/
-
     /**
      * A placeholder fragment containing a simple view.
-     */
-    public static class PlaceholderFragment extends Fragment {
+
+    public static class PlaceholderFragment extends ListFragment {
 
         public PlaceholderFragment() {
         }
@@ -233,5 +209,5 @@ public class MainActivity extends ActionBarActivity implements  GoogleApiClient.
             View rootView = inflater.inflate(R.layout.fragment_main, container, false);
             return rootView;
         }
-    }
+    } */
 }

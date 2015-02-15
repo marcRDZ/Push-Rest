@@ -5,9 +5,6 @@ import com.googlecode.objectify.annotation.Entity;
 import com.googlecode.objectify.annotation.Id;
 import com.googlecode.objectify.annotation.Index;
 
-import java.util.HashMap;
-import java.util.List;
-
 /**
  * The Objectify object model for device registrations we are persisting
  */
@@ -27,8 +24,6 @@ public class RegistrationRecord {
     private String moment;
 
     private String typeAct;
-
-    private List<HashMap<String,String>> acts;
 
     public RegistrationRecord() {
     }
@@ -63,13 +58,5 @@ public class RegistrationRecord {
 
     public void setTypeAct(String typeAct) {
         this.typeAct = typeAct;
-    }
-
-    public List<HashMap<String, String>> getActs() {
-        return acts;
-    }
-
-    public void setActs(List<HashMap<String, String>> acts) {
-        this.acts = acts;
     }
 }

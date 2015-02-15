@@ -63,10 +63,10 @@ public class RegistrationEndpoint {
         List<RegistrationRecord> records = ofy().load().type(RegistrationRecord.class).limit(count).list();
         return CollectionResponse.<RegistrationRecord>builder().setItems(records).build();
     }
+
     private RegistrationRecord findRecord(String regId) {
         return ofy().load().type(RegistrationRecord.class).filter("regId", regId).first().now();
     }
-
 
     @ApiMethod(name = "record")
     public void registerActivity(@Named("regId") String regId,@Named("idPhone") String idPhone,
@@ -80,6 +80,12 @@ public class RegistrationEndpoint {
         ofy().save().entity(act).now();
         MessagingEndpoint messagingEndpoint = new MessagingEndpoint();
         messagingEndpoint.pushNotification(act);
+    }
+
+    @ApiMethod(name = "listActivities", httpMethod= ApiMethod.HttpMethod.POST)
+    public CollectionResponse<RegistrationRecord> listActivities(@Named("idPhone") String idPhone) {
+        List<RegistrationRecord> records = ofy().load().type(RegistrationRecord.class).filter("idPhone", idPhone).list();
+        return CollectionResponse.<RegistrationRecord>builder().setItems(records).build();
     }
 
 }

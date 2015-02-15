@@ -3,6 +3,7 @@ package com.rodriguezdiaz.marcos.push_rest;
 import android.app.IntentService;
 import android.app.Notification;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -43,10 +44,14 @@ public class GcmIntentService extends IntentService {
     }
 
     protected void notify(final String message) {
+        Intent myIntent = new Intent(getApplicationContext(), MainActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, myIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
         Notification.Builder mBuilder =
                 new Notification.Builder(this)
                         .setSmallIcon(R.drawable.common_ic_googleplayservices)
                         .setContentTitle("Push-Rest")
+                        .setContentIntent(pendingIntent)
                         .setContentText(message);
         NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         mNotificationManager.notify(notifyID, mBuilder.getNotification());

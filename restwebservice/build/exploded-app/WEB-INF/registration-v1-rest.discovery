@@ -1,6 +1,6 @@
 {
  "kind": "discovery#restDescription",
- "etag": "\"c05bU6zpvXPOpQakG5gG3IOJh8Y/vSP8msNo_bUigR9K9cUegVLYXDc\"",
+ "etag": "\"c05bU6zpvXPOpQakG5gG3IOJh8Y/mTOKamoabVvqZLq-3hBXGIDglA4\"",
  "discoveryVersion": "v1",
  "id": "registration:v1",
  "name": "registration",
@@ -108,6 +108,27 @@
   }
  },
  "methods": {
+  "listActivities": {
+   "id": "registration.listActivities",
+   "path": "registrationrecord/{idPhone}",
+   "httpMethod": "POST",
+   "parameters": {
+    "idPhone": {
+     "type": "string",
+     "required": true,
+     "location": "path"
+    }
+   },
+   "parameterOrder": [
+    "idPhone"
+   ],
+   "response": {
+    "$ref": "CollectionResponse_RegistrationRecord"
+   },
+   "scopes": [
+    "https://www.googleapis.com/auth/userinfo.email"
+   ]
+  },
   "listDevices": {
    "id": "registration.listDevices",
    "path": "registrationrecord/{count}",
